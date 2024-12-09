@@ -1,5 +1,6 @@
 import AppController from '../controllers/AppController';
 import AuthController from '../controllers/AuthController';
+import FilesController from '../controllers/FilesController';
 import UsersController from '../controllers/UsersController';
 
 export default function routes(app) {
@@ -11,4 +12,6 @@ export default function routes(app) {
 
   app.post('/users', UsersController.postNew);
   app.get('/users/me', UsersController.getMe);
+
+  app.post('/files', FilesController.postUpload);
 }
