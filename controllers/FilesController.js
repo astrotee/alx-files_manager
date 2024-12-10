@@ -49,44 +49,32 @@ const FilesController = {
         return res.status(400).json({ error: 'Parent is not a folder' });
       }
     }
-    if (type === 'folder') {
-      const newFolder = await files.insertOne({
-        userId: new ObjectId(userId),
-        name,
-        type,
-        parentId: parentId ? parentObjId : 0,
-      });
-      return res.status(201).json({
-        id: newFolder.insertedId,
-        userId,
-        name,
-        type,
-        parentId,
-      });
-    }
-    const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
-    const folderPath = FOLDER_PATH;
-    if (!fs.existsSync(folderPath)) {
-      fs.mkdirSync(folderPath, { recursive: true });
-    }
-    const filePath = path.join(folderPath, uuidv4());
-    const buff = Buffer.from(data, 'base64');
-    fs.writeFileSync(filePath, buff);
-    const newFile = await files.insertOne({
+    const fileInfo = {
       userId: new ObjectId(userId),
       name,
       type,
       isPublic: isPublic || false,
       parentId: parentId ? parentObjId : 0,
-      localPath: filePath,
-    });
+    };
+    const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
+    const folderPath = FOLDER_PATH;
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+    }
+    if (type !== 'folder') {
+      const filePath = path.join(folderPath, uuidv4());
+      const buff = Buffer.from(data, 'base64');
+      fs.writeFileSync(filePath, buff);
+      fileInfo.localPath = filePath;
+    }
+    const newFile = await files.insertOne(fileInfo);
     return res.status(201).json({
       id: newFile.insertedId,
       userId,
       name,
       type,
       isPublic: isPublic || false,
-      parentId,
+      parentId: parentId || 0,
     });
   },
 };
