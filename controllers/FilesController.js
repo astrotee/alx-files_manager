@@ -2,25 +2,12 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
 import dbClient from '../utils/db';
-import redisClient from '../utils/redis';
 
 const { ObjectId } = require('mongodb');
 
 const FilesController = {
   async postUpload(req, res) {
-    const token = req.header('X-Token');
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const userId = await redisClient.get(`auth_${token}`);
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const users = await dbClient.usersCollection();
-    const user = await users.findOne({ _id: new ObjectId(userId) });
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const userId = req.user._id.toString();
     const {
       name, type, parentId, isPublic, data,
     } = req.body;
