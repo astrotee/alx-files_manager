@@ -34,8 +34,14 @@ const FilesController = {
       return res.status(400).json({ error: 'Missing data' });
     }
     const files = await dbClient.filesCollection();
+    let parentObjId;
     if (parentId) {
-      const parent = await files.findOne({ _id: new ObjectId(parentId) });
+      try {
+        parentObjId = new ObjectId(parentId);
+      } catch (error) {
+        return res.status(400).json({ error: 'Parent not found' });
+      }
+      const parent = await files.findOne({ _id: parentObjId });
       if (!parent) {
         return res.status(400).json({ error: 'Parent not found' });
       }
@@ -48,7 +54,7 @@ const FilesController = {
         userId: new ObjectId(userId),
         name,
         type,
-        parentId: parentId ? new ObjectId(parentId) : 0,
+        parentId: parentId ? parentObjId : 0,
       });
       return res.status(201).json({
         id: newFolder.insertedId,
@@ -71,7 +77,7 @@ const FilesController = {
       name,
       type,
       isPublic: isPublic || false,
-      parentId: parentId ? new ObjectId(parentId) : 0,
+      parentId: parentId ? parentObjId : 0,
       localPath: filePath,
     });
     return res.status(201).json({
