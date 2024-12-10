@@ -64,6 +64,59 @@ const FilesController = {
       parentId: parentId || 0,
     });
   },
+  async getShow(req, res) {
+    const userId = req.user._id;
+    const { id } = req.params;
+    let file;
+    try {
+      file = new ObjectId(id);
+    } catch (error) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const files = await dbClient.filesCollection();
+    const fileFound = await files.findOne({ userId, _id: file });
+    if (!fileFound) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    return res.status(200).json({
+      id: fileFound._id,
+      userId: fileFound.userId,
+      name: fileFound.name,
+      type: fileFound.type,
+      isPublic: fileFound.isPublic,
+      parentId: fileFound.parentId,
+    });
+  },
+  async getIndex(req, res) {
+    const userId = req.user._id;
+    const page = req.query.page && parseInt(req.query.page, 10) ? parseInt(req.query.page, 10) : 0;
+    const pid = req.query.parentId;
+    let parentId;
+    try {
+      parentId = new ObjectId(pid);
+    } catch (error) {
+      parentId = 0;
+    }
+    const files = await dbClient.filesCollection();
+    const filesFound = await files.aggregate([
+      { $match: { userId, parentId: pid ? parentId : 0 } },
+      { $sort: { name: 1 } },
+      { $skip: page * 20 },
+      { $limit: 20 },
+      {
+        $project: {
+          _id: 0,
+          id: '$_id',
+          userId: '$userId',
+          name: '$name',
+          type: '$type',
+          isPublic: '$isPublic',
+          parentId: '$parentId',
+        },
+      },
+    ]).toArray();
+    return res.status(200).json(filesFound);
+  },
 };
 
 export default FilesController;

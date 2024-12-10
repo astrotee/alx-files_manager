@@ -15,4 +15,6 @@ export default function routes(app) {
   app.get('/users/me', authToken, UsersController.getMe);
 
   app.post('/files', authToken, FilesController.postUpload);
+  app.get('/files/:id', authToken, FilesController.getShow);
+  app.get('/files', authToken, FilesController.getIndex);
 }
