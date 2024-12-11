@@ -1,7 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
+import { contentType } from 'mime-types';
 import path from 'path';
 import dbClient from '../utils/db';
+import { getUserXAuthToken } from '../utils/auth';
 
 const { ObjectId } = require('mongodb');
 
@@ -164,6 +166,30 @@ const FilesController = {
       isPublic: false,
       parentId: fileFound.parentId,
     });
+  },
+  async getFile(req, res) {
+    const user = await getUserXAuthToken(req);
+    const userId = user ? user._id : null;
+    const { id } = req.params;
+    let file;
+    try {
+      file = new ObjectId(id);
+    } catch (error) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const files = await dbClient.filesCollection();
+    const fileFound = await files.findOne({ _id: file });
+    if (!fileFound || (!fileFound.isPublic && fileFound.userId !== userId)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    if (fileFound.type === 'folder') {
+      return res.status(400).json({ error: 'A folder doesn\'t have content' });
+    }
+    if (!fs.existsSync(fileFound.localPath)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    res.setHeader('Content-Type', contentType(fileFound.name || 'application/octet-stream'));
+    return res.status(200).sendFile(fileFound.localPath);
   },
 };
 
