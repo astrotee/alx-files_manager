@@ -2,10 +2,13 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import { contentType } from 'mime-types';
 import path from 'path';
+import Bull from 'bull';
 import dbClient from '../utils/db';
 import { getUserXAuthToken } from '../utils/auth';
 
 const { ObjectId } = require('mongodb');
+
+const fileQueue = new Bull('fileQueue');
 
 const FilesController = {
   async postUpload(req, res) {
@@ -57,6 +60,12 @@ const FilesController = {
       fileInfo.localPath = filePath;
     }
     const newFile = await files.insertOne(fileInfo);
+    if (type === 'image') {
+      fileQueue.add({
+        userId,
+        fileId: newFile.insertedId.toString(),
+      });
+    }
     return res.status(201).json({
       id: newFile.insertedId,
       userId,
@@ -171,6 +180,7 @@ const FilesController = {
     const user = await getUserXAuthToken(req);
     const userId = user ? user._id : null;
     const { id } = req.params;
+    const { size } = req.query;
     let file;
     try {
       file = new ObjectId(id);
@@ -185,11 +195,12 @@ const FilesController = {
     if (fileFound.type === 'folder') {
       return res.status(400).json({ error: 'A folder doesn\'t have content' });
     }
-    if (!fs.existsSync(fileFound.localPath)) {
+    const filePath = size ? `${fileFound.localPath}_${size}` : fileFound.localPath;
+    if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'Not found' });
     }
     res.setHeader('Content-Type', contentType(fileFound.name || 'application/octet-stream'));
-    return res.status(200).sendFile(fileFound.localPath);
+    return res.status(200).sendFile(filePath);
   },
 };
 
